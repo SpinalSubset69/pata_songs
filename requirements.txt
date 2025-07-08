@@ -3,11 +3,17 @@ aiohttp==3.12.13
 aiosignal==1.4.0
 attrs==25.3.0
 audioop-lts==0.2.1
+certifi==2025.6.15
+charset-normalizer==3.4.2
 discord.py==2.5.2
 dotenv==0.9.9
 frozenlist==1.7.0
 idna==3.10
 multidict==6.6.3
 propcache==0.3.2
+python-dotenv==1.1.1
+requests==2.32.4
+urllib3==2.5.0
 yarl==1.20.1
 youtube-search==2.1.2
+yt-dlp==2025.6.30

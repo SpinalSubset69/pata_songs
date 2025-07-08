@@ -1,0 +1,19 @@
+{
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#0E207F",
+    "titleBar.activeBackground": "#142CB2",
+    "titleBar.activeForeground": "#FAFAFE"
+  },
+  "eslint.enable": false,
+  "python.defaultInterpreterPath": "./venv/bin/python",
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "standard",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoIndent": true,
+  "python.analysis.inlayHints.variableTypes": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnType": true,
+    "editor.formatOnSave": true,
+  }
+}
