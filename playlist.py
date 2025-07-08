@@ -19,7 +19,7 @@ class PlayList():
         playlist = self.play_list_dic[connection_id]
         current_idx = self.current_index_dic[connection_id]
 
-        if len(playlist) < current_idx:
+        if len(playlist) <= current_idx:
             return ''
 
         song_name = playlist[current_idx]

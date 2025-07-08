@@ -28,8 +28,15 @@ def download_youtube_song(videoUrl, song_title):
 
 def get_command_args_split(args):
     first_split = args.split(' ') # To avoide extra args
-    split_args = first_split[0].split('|')
-    song_name = split_args[0]
+    
+    split_args = []
+    song_name = ''
+    if '|' in first_split[0]:
+        split_args = first_split[0].split('|')
+        song_name = split_args[0]
+    else:
+        song_name = first_split[0]
+    
     song_author=''
 
     if len(split_args) > 0:
@@ -47,11 +54,12 @@ def get_command_args_split(args):
 
 async def reproduce_song(ctx, audio_name, bot, play_list):
     try:
+        guild = ctx.guild
         guild_id = ctx.guild.id
-        voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients)
+        voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients, guild= guild)
         audio_source = get_audio_source(audio_name)                   
         if not voice_client.is_playing():
-            voice_client.play(audio_source, after=None)            
+            voice_client.play(audio_source, after=None)                        
             await ctx.send('Reproducing ' + audio_name)              
 
             while voice_client.is_playing():
@@ -60,7 +68,7 @@ async def reproduce_song(ctx, audio_name, bot, play_list):
             if play_list.get_playlist_lenght(guild_id) > 0 and play_list.get_current_playlist_index(guild_id) <= play_list.get_playlist_lenght(guild_id):
                 actual_audio_name = play_list.get_next_song(guild_id)                
                 new_audio_source = get_audio_source(actual_audio_name)
-                voice_client.play(new_audio_source, after=None)
+                await reproduce_song(ctx, new_audio_source, bot, play_list)
             else:
                 play_list.reset_play_list(guild_id)
                 await voice_client.disconnect()
@@ -75,14 +83,14 @@ def get_audio_source(audio_name):
      return discord.FFmpegPCMAudio(executable='./ffmpeg/bin/ffmpeg.exe', source='./songs/' + audio_name) 
                 
 async def connect_to_voice_channel(ctx, bot):
+    guild = ctx.guild
     connected = ctx.author.voice     
-    voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients)       
+    voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients, guild=guild)       
     if connected:
         # connect bot to channel
         if voice_client is None or voice_client.is_connected() == False:
             # connect bot to channel                
-            await connected.channel.connect()            
-            await ctx.send('Bot connected to channel!')
+            await connected.channel.connect()                        
         return True                        
     else:
         return False

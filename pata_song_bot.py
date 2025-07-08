@@ -14,6 +14,7 @@ load_dotenv()
 
 # Initalize variables
 BOT_TOKEN= os.getenv('BOT_TOKEN')
+
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 play_list = PlayList()
@@ -32,7 +33,7 @@ async def reproduce_playlist(ctx):
         play_list.reset_play_list(guild_id);
         return
     
-    connected_to_channel = await connect_to_voice_channel(ctx) 
+    connected_to_channel = await connect_to_voice_channel(ctx, bot) 
     if connected_to_channel:
         # connect bot to channel                
         await ctx.send('Bot connected to channel!')
@@ -87,5 +88,24 @@ async def play(ctx, args: str = commands.parameter(default='', description='Song
                 await ctx.send('User is not in a channel, failed to join...')
     except AttributeError:
         print('Error')    
+    
+@bot.command()
+async def next_song(ctx):
+    guild = ctx.guild
+    guild_id = ctx.guild.id
+    voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients, guild=guild)
+    
+    new_audio_name = play_list.get_next_song(guild_id)
 
+    if new_audio_name == '':
+        await ctx.send('No more songs in playlist, going to clear playlist!')
+        play_list.reset_play_list(guild_id)
+        return
+
+    if voice_client.is_playing():
+        voice_client.stop()
+    
+    await reproduce_song(ctx, new_audio_name, bot, play_list)
+    
+    
 bot.run(BOT_TOKEN)
