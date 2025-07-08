@@ -51,7 +51,7 @@ async def reproduce_song(ctx, audio_name, bot, play_list):
         voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients)
         audio_source = get_audio_source(audio_name)                   
         if not voice_client.is_playing():
-            voice_client.play(audio_source, after=None)
+            voice_client.play(audio_source, after=None)            
             await ctx.send('Reproducing ' + audio_name)              
 
             while voice_client.is_playing():
@@ -65,7 +65,8 @@ async def reproduce_song(ctx, audio_name, bot, play_list):
                 play_list.reset_play_list(guild_id)
                 await voice_client.disconnect()
         else:
-            play_list.add_to_playlist(guild_id, audio_name)
+            play_list.add_to_playlist(guild_id, audio_name)          
+            await ctx.send('Added to playlist:  ' + audio_name)                
 
     except Exception as e:
         print(e)           
@@ -73,11 +74,15 @@ async def reproduce_song(ctx, audio_name, bot, play_list):
 def get_audio_source(audio_name):
      return discord.FFmpegPCMAudio(executable='./ffmpeg/bin/ffmpeg.exe', source='./songs/' + audio_name) 
                 
-async def connect_to_voice_channel(ctx):
-    connected = ctx.author.voice            
+async def connect_to_voice_channel(ctx, bot):
+    connected = ctx.author.voice     
+    voice_client: discord.VoiceClient = discord.utils.get(bot.voice_clients)       
     if connected:
         # connect bot to channel
-        await connected.channel.connect()
+        if voice_client is None or voice_client.is_connected() == False:
+            # connect bot to channel                
+            await connected.channel.connect()            
+            await ctx.send('Bot connected to channel!')
         return True                        
     else:
         return False

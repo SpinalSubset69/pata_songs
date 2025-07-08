@@ -26,6 +26,11 @@ async def reproduce_playlist(ctx):
         return
             
     audio_name = play_list.get_next_song(guild_id)
+
+    if audio_name == '':
+        await ctx.send('Play list end')
+        play_list.reset_play_list(guild_id);
+        return
     
     connected_to_channel = await connect_to_voice_channel(ctx) 
     if connected_to_channel:
@@ -71,18 +76,13 @@ async def play(ctx, args: str = commands.parameter(default='', description='Song
             message  = 'Matched result for query: ' + result.title + ' downloading song...'
             await ctx.send(message)                                    
                         
-            audio_name = download_youtube_song(result.url_suffix, result.title)
+            audio_name = download_youtube_song(result.url_suffix, result.title)            
 
-            await ctx.send('Song downloaded, joinin voice channel...')
+            connected_to_channel = await connect_to_voice_channel(ctx, bot)    
 
-            connected_to_channel = await connect_to_voice_channel(ctx)    
-
-            if connected_to_channel:
-                # connect bot to channel                
-                await ctx.send('Bot connected to channel!')
-                
+            if connected_to_channel:                                
                 # Reproduce Music
-                await reproduce_song(ctx=ctx, audio_name=audio_name)                                            
+                await reproduce_song(ctx=ctx, audio_name=audio_name, bot=bot, play_list=play_list)                                            
             else:
                 await ctx.send('User is not in a channel, failed to join...')
     except AttributeError:
