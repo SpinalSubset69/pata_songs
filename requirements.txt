@@ -4,8 +4,10 @@ aiosignal==1.4.0
 attrs==25.3.0
 audioop-lts==0.2.1
 discord.py==2.5.2
+dotenv==0.9.9
 frozenlist==1.7.0
 idna==3.10
 multidict==6.6.3
 propcache==0.3.2
 yarl==1.20.1
+youtube-search==2.1.2
