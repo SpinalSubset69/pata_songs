@@ -1,3 +1,4 @@
+from tkinter import NO
 from typing import Any, List, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
@@ -126,6 +127,9 @@ async def play(
                 + " downloading song..."
             )
             await ctx.send(message)
+            
+            if 'list' in youtube_result["url_suffix"]:
+                youtube_result["url_suffix"] = youtube_result["url_suffix"].split('&')[0]
 
             audio_name: str = bot_utils.download_youtube_song(
                 youtube_result["url_suffix"], youtube_result["title"]
@@ -171,6 +175,5 @@ async def next_song(ctx: Context):
         voice_client.stop()
 
     await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
-
 
 bot.run(BOT_TOKEN)

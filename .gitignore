@@ -3,3 +3,4 @@ bots_env
 ffmpeg
 .env
 venv/
+*.mp3

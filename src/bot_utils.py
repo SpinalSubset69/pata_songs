@@ -122,8 +122,11 @@ async def reproduce_song(
 
 
 def get_audio_source(audio_name: str) -> FFmpegPCMAudio:
-    if exists("./songs/" + audio_name):
+    if exists("./songs/" + audio_name) == False:
         raise FileNotFoundError(f"Could not find {audio_name}")
+
+    if exists("./ffmpeg/bin/") == False:
+        raise FileNotFoundError(f"Could not find ffmpeg")
 
     return FFmpegPCMAudio(
         executable="./ffmpeg/bin/ffmpeg.exe", source="./songs/" + audio_name
@@ -141,29 +144,16 @@ async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
 
     if not isinstance(author.voice, VoiceState):
         raise RuntimeError("Could not obtain voice")
-
-    guild: Guild = ctx.guild
+    
     connected: VoiceState | None = ctx.author.voice
 
     if not isinstance(connected, VoiceState):
-        raise RuntimeError("Could not obtain a valid VoiceState")
-
-    voice_client: VoiceClient | VoiceProtocol | None = get(
-        bot.voice_clients, guild=guild
-    )
-
-    if not isinstance(voice_client, VoiceClient):
-        raise RuntimeError("Could not obtain instance of VoiceClient")
+        raise RuntimeError("Could not obtain a valid VoiceState")    
 
     if connected:
-        # connect bot to channel
-        if voice_client is None or voice_client.is_connected() == False:
-            # connect bot to channel
-
-            if connected.channel is None:
-                raise RuntimeError("Could not obtain channel")
-
-            await connected.channel.connect()
+        if connected.channel is None:
+            raise RuntimeError("Could not obtain channel")            
+        await connected.channel.connect()
         return True
     else:
         return False
