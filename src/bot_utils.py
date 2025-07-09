@@ -157,8 +157,3 @@ async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
         return True
     else:
         return False
-
-def get_guild_from_context(ctx: Context) -> Guild:
-    if ctx.guild is None:
-        raise RuntimeError("Could not obtain guild")
-    return ctx.guild
