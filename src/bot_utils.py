@@ -1,5 +1,8 @@
+import platform
+from pydoc import plain
 from typing import Any, List, Literal
 from yt_dlp import YoutubeDL
+from platform import system
 from playlist import PlayList
 from os.path import exists
 from discord.utils import get
@@ -122,16 +125,16 @@ async def reproduce_song(
 
 
 def get_audio_source(audio_name: str) -> FFmpegPCMAudio:
-    if exists("./songs/" + audio_name) == False:
+    if not exists("./songs/" + audio_name):
         raise FileNotFoundError(f"Could not find {audio_name}")
+    
+    is_windows: bool = platform.system() == "Windows"
+    ffmpeg: str = "./ffmpeg/bin/ffmpeg.exe" if is_windows else "ffmpeg"
 
-    if exists("./ffmpeg/bin/") == False:
+    if is_windows and not exists("./ffmpeg/bin/"):
         raise FileNotFoundError(f"Could not find ffmpeg")
 
-    return FFmpegPCMAudio(
-        executable="./ffmpeg/bin/ffmpeg.exe", source="./songs/" + audio_name
-    )
-
+    return FFmpegPCMAudio(executable=ffmpeg, source="./songs/" + audio_name)
 
 async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
     if ctx.guild is None:
