@@ -1,3 +1,4 @@
+from tkinter import NO
 from typing import Any, List, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
@@ -126,6 +127,9 @@ async def play(
                 + " downloading song..."
             )
             await ctx.send(message)
+            
+            if 'list' in youtube_result["url_suffix"]:
+                youtube_result["url_suffix"] = youtube_result["url_suffix"].split('&')[0]
 
             audio_name: str = bot_utils.download_youtube_song(
                 youtube_result["url_suffix"], youtube_result["title"]
@@ -172,5 +176,44 @@ async def next_song(ctx: Context):
 
     await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
 
+@bot.command()
+async def stop(ctx: Context):
+    '''
+    Stops current song, if bot is in a voice chat and is playing a song, does not skip it
+    '''
+    ctx_guild = bot_utils.get_guild_from_context(ctx)    
+        
+    voice_client: VoiceClient | VoiceProtocol | None = get(
+        bot.voice_clients, guild=ctx_guild
+    )
+
+    if not isinstance(voice_client, VoiceClient):
+        raise RuntimeError("Could not obtain instance of VoiceClient")
+
+    if voice_client.is_playing() == False:
+        await ctx.send('Bot is not playing music, can\'t stop.')
+        return
+    
+    voice_client.stop()
+
+@bot.command()
+async def resume(ctx: Context):
+    '''
+    Resume current song
+    '''
+    ctx_guild = bot_utils.get_guild_from_context(ctx)    
+        
+    voice_client: VoiceClient | VoiceProtocol | None = get(
+        bot.voice_clients, guild=ctx_guild
+    )
+
+    if not isinstance(voice_client, VoiceClient):
+        raise RuntimeError("Could not obtain instance of VoiceClient")
+
+    if voice_client.is_playing() == False:
+        await ctx.send('Bot is not playing music, can\'t stop.')
+        return
+    
+    voice_client.resume()
 
 bot.run(BOT_TOKEN)
