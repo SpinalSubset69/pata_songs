@@ -176,4 +176,19 @@ async def next_song(ctx: Context):
 
     await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
 
+@bot.command()
+async def leave(ctx: Context):
+    if ctx.guild is None:
+        raise RuntimeError("Could not obtain guild")
+
+    guild: Guild = ctx.guild
+    voice_client: VoiceClient | VoiceProtocol | None = get(
+        bot.voice_clients, guild=guild
+    )
+
+    if not isinstance(voice_client, VoiceClient):
+        raise RuntimeError("Could not obtain instance of VoiceClient")
+
+    await voice_client.disconnect()
+
 bot.run(BOT_TOKEN)
