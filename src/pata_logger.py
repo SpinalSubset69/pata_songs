@@ -1,10 +1,13 @@
 import logging
+from os import path, makedirs
 from typing import TextIO
+
+makedirs("logs", exist_ok=True)
 
 def Logger(name: str) -> logging.Logger:
     console_handler: logging.StreamHandler[TextIO] = logging.StreamHandler();
     file_handler: logging.FileHandler = logging.FileHandler(
-        filename="./logs/logs.txt",
+        filename=path.join("logs", "logs.txt"),
         encoding="utf-8",
         mode='w'
     )
