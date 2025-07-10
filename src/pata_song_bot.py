@@ -1,4 +1,3 @@
-from tkinter import NO
 from typing import Any, List, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
@@ -9,6 +8,7 @@ from dotenv import load_dotenv
 from discord.utils import get
 from discord import Guild, Intents, VoiceProtocol, VoiceClient
 from os import getenv
+from pata_logger import Logger
 import bot_utils
 
 load_dotenv()
@@ -21,12 +21,14 @@ if BOT_TOKEN is None:
 intents: Intents = Intents.all()
 bot = Bot(command_prefix="!", intents=intents)
 play_list = PlayList()
+logger = Logger("pata_song_bot")
 
 
 @bot.command()
 async def reproduce_playlist(ctx: Context):
     if ctx.guild is None:
-        raise RuntimeError("Could not obtain guild")
+        logger.error("Could not obtain guild")
+        return
 
     guild_id: int = ctx.guild.id
 
@@ -81,7 +83,8 @@ async def add_playlist(
         youtube_result: YoutubeResult = typed_results[0]
 
         if ctx.guild is None:
-            raise RuntimeError("Could not obtain guild")
+            logger.error(f"Could not obtain guild")
+            return
 
         guild_id: int = ctx.guild.id
 
@@ -91,7 +94,7 @@ async def add_playlist(
 
         play_list.add_to_playlist(guild_id, audio_name)
 
-        await ctx.send("Song " + audio_name + " added to playlist!!")
+        await ctx.send("Song " + audio_name + " added to playlist!")
 
 
 @bot.command()
@@ -146,14 +149,16 @@ async def play(
                 )
             else:
                 await ctx.send("User is not in a channel, failed to join...")
-    except AttributeError:
-        print("Error")
+    except AttributeError as e:
+        logger.error(e)
+        return
 
 
 @bot.command()
 async def next_song(ctx: Context):
     if ctx.guild is None:
-        raise RuntimeError("Could not obtain guild")
+        logger.error(f"Could not obtain guild")
+        return
 
     guild: Guild = ctx.guild
     guild_id: int = ctx.guild.id
@@ -162,7 +167,8 @@ async def next_song(ctx: Context):
     )
 
     if not isinstance(voice_client, VoiceClient):
-        raise RuntimeError("Could not obtain instance of VoiceClient")
+        logger.error(f"Could not obtain instance of VoiceClient")
+        return
 
     new_audio_name: Any | Literal[""] = play_list.get_next_song(guild_id)
 
@@ -176,10 +182,12 @@ async def next_song(ctx: Context):
 
     await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
 
+
 @bot.command()
 async def leave(ctx: Context):
     if ctx.guild is None:
-        raise RuntimeError("Could not obtain guild")
+        logger.error(f"Could not obtain guild")
+        return
 
     guild: Guild = ctx.guild
     voice_client: VoiceClient | VoiceProtocol | None = get(
@@ -187,7 +195,8 @@ async def leave(ctx: Context):
     )
 
     if not isinstance(voice_client, VoiceClient):
-        raise RuntimeError("Could not obtain instance of VoiceClient")
+        logger.error(f"Could not obtain instance of VoiceClient")
+        return
 
     await voice_client.disconnect()
 

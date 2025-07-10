@@ -1,8 +1,7 @@
 import platform
-from pydoc import plain
 from typing import Any, List, Literal
 from yt_dlp import YoutubeDL
-from platform import system
+from pata_logger import Logger
 from playlist import PlayList
 from os.path import exists
 from discord.utils import get
@@ -16,6 +15,9 @@ from discord import (
 )
 from asyncio import sleep
 from discord.ext.commands import Bot, Context
+
+
+logger = Logger("bot_utils")
 
 
 def download_youtube_song(videoUrl: str, song_title: str) -> str:
@@ -36,12 +38,13 @@ def download_youtube_song(videoUrl: str, song_title: str) -> str:
     }
 
     if video_info is None:
-        raise RuntimeError(f"Could not obtain video information from: {video_url}")
+        logger.error(f"Could not obtain video information from: {video_url}")
+        return ""
 
     with YoutubeDL(options) as ydl:
         ydl.download([video_info["webpage_url"]])
 
-    print("Download complete... {}".format(filename))
+    logger.debug(f"Download complete... {filename}")
 
     return filename
 
@@ -79,7 +82,8 @@ async def reproduce_song(
 ) -> None:
     try:
         if ctx.guild is None:
-            raise RuntimeError("Could not obtain guild")
+            logger.error("Could not obtain guild")
+            return
 
         guild: Guild = ctx.guild
         guild_id: int = ctx.guild.id
@@ -89,9 +93,14 @@ async def reproduce_song(
         )
 
         if not isinstance(voice_client, VoiceClient):
-            raise RuntimeError("Could not obtain instance of VoiceClient")
+            logger.error("Could not obtain instance of VoiceClient")
+            return
 
-        audio_source: FFmpegPCMAudio = get_audio_source(audio_name)
+        audio_source: FFmpegPCMAudio | None = get_audio_source(audio_name)
+
+        if audio_source is None:
+            logger.error("Could not obtain audio source")
+            return
 
         if not voice_client.is_playing():
             voice_client.play(audio_source, after=None)
@@ -110,7 +119,11 @@ async def reproduce_song(
             ):
                 # TODO: Check why we pass new_audio_source but the method reproduce_song accepts only name so it's not needed
                 actual_audio_name: Any = play_list.get_next_song(guild_id)
-                new_audio_source: FFmpegPCMAudio = get_audio_source(actual_audio_name)
+                new_audio_source: FFmpegPCMAudio | None = get_audio_source(actual_audio_name)
+
+                if new_audio_source is None:
+                    logger.error("Could not obtain audio source")
+                    return
 
                 await reproduce_song(ctx, actual_audio_name, bot, play_list)
             else:
@@ -121,42 +134,56 @@ async def reproduce_song(
             await ctx.send("Added to playlist:  " + audio_name)
 
     except Exception as e:
-        print(e)
+        logger.error(e)
 
 
-def get_audio_source(audio_name: str) -> FFmpegPCMAudio:
+def get_audio_source(audio_name: str) -> FFmpegPCMAudio | None:
     if not exists("./songs/" + audio_name):
-        raise FileNotFoundError(f"Could not find {audio_name}")
+        logger.error(f"Could not find {audio_name}")
+        return None
     
     is_windows: bool = platform.system() == "Windows"
     ffmpeg: str = "./ffmpeg/bin/ffmpeg.exe" if is_windows else "ffmpeg"
 
     if is_windows and not exists("./ffmpeg/bin/"):
-        raise FileNotFoundError(f"Could not find ffmpeg")
+        logger.error(f"Could not find ffmpeg")
+        return None
 
     return FFmpegPCMAudio(executable=ffmpeg, source="./songs/" + audio_name)
 
 async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
     if ctx.guild is None:
-        raise RuntimeError("Could not obtain guild")
+        logger.error("Could not obtain guild")
+        return False
 
     if not isinstance(ctx.author, Member):
-        raise RuntimeError("Author is not a Member")
+        logger.error("Author is not a Member")
+        return False
 
     author: Member = ctx.author
 
     if not isinstance(author.voice, VoiceState):
-        raise RuntimeError("Could not obtain voice")
+        logger.error("Could not obtain voice")
+        return False
     
     connected: VoiceState | None = ctx.author.voice
 
     if not isinstance(connected, VoiceState):
-        raise RuntimeError("Could not obtain a valid VoiceState")    
+        logger.error("Could not obtain a valid VoiceState")    
+        return False
 
     if connected:
         if connected.channel is None:
-            raise RuntimeError("Could not obtain channel")            
-        await connected.channel.connect()
+            logger.error("Could not obtain channel")
+            return False
+
+        voice_client: VoiceClient = await connected.channel.connect()
+
+        if not voice_client.is_connected:
+            logger.error("Could not connect to channel")
+            return False
+
+        logger.debug(f"Connected to channel {voice_client.channel.id}")
         return True
     else:
         return False
