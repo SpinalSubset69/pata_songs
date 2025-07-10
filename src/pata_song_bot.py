@@ -1,4 +1,4 @@
-from typing import Any, List, Literal
+from typing import Any, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
 from discord.ext import commands
@@ -42,7 +42,7 @@ async def reproduce_playlist(ctx: Context):
         play_list.reset_play_list(guild_id)
         return
 
-    connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx, bot)
+    connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx)
     if connected_to_channel:
         # connect bot to channel
         await ctx.send("Bot connected to channel!")
@@ -119,7 +119,7 @@ async def play(
                 "url_suffix"
             ].split("&")[0]
 
-        connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx, bot)
+        connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx)
 
         if connected_to_channel:
             # Reproduce Music
@@ -179,6 +179,10 @@ async def leave(ctx: Context):
     if not isinstance(voice_client, VoiceClient):
         logger.error(f"Could not obtain instance of VoiceClient")
         return
+
+    if voice_client.is_playing():
+        logger.debug("Client is playing songs, stopping")
+        voice_client.stop()
 
     await voice_client.disconnect()
 
