@@ -3,7 +3,6 @@ from youtube_result import YoutubeResult
 from playlist import PlayList
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
-from youtube_search import YoutubeSearch
 from dotenv import load_dotenv
 from discord.utils import get
 from discord import Guild, Intents, VoiceProtocol, VoiceClient
@@ -50,7 +49,7 @@ async def reproduce_playlist(ctx: Context):
 
         # Reproduce Music
         await bot_utils.reproduce_song(
-            ctx=ctx, audio_name=audio_name, bot=bot, play_list=play_list
+            ctx=ctx, video_url=audio_name, bot=bot, play_list=play_list
         )
     else:
         await ctx.send("User is not in a channel, failed to join...")
@@ -67,34 +66,24 @@ async def add_playlist(
         await ctx.send("Please provided at least 1 argument")
         return
 
-    youtube_search_results: List[Any] | str = YoutubeSearch(
-        youtube_query, max_results=5
-    ).to_dict()
+    youtube_search_result: YoutubeResult | None = bot_utils.search_youtube(
+        youtube_query
+    )
 
-    typed_results: List[YoutubeResult] = []
-
-    if isinstance(youtube_search_results, str):
-        await ctx.send(f"Search failed or returned error: {youtube_search_results}")
+    if youtube_search_result is None:
+        logger.error(f"No video result obtained, returning.")
+        await ctx.send(f"Could not find anything related to: {youtube_query}")
         return
-    else:
-        typed_results = [YoutubeResult(entry) for entry in youtube_search_results]
 
-    if len(typed_results) > 1:
-        youtube_result: YoutubeResult = typed_results[0]
+    if ctx.guild is None:
+        logger.error(f"Could not obtain guild")
+        return
 
-        if ctx.guild is None:
-            logger.error(f"Could not obtain guild")
-            return
+    guild_id: int = ctx.guild.id
 
-        guild_id: int = ctx.guild.id
+    play_list.add_to_playlist(guild_id, youtube_search_result["url_suffix"])
 
-        audio_name: str = bot_utils.download_youtube_song(
-            youtube_result["url_suffix"], youtube_result["title"]
-        )
-
-        play_list.add_to_playlist(guild_id, audio_name)
-
-        await ctx.send("Song " + audio_name + " added to playlist!")
+    await ctx.send("Song " + youtube_search_result["title"] + " added to playlist!")
 
 
 @bot.command()
@@ -109,46 +98,39 @@ async def play(
             await ctx.send("Please provided at least 1 argument")
             return
 
-        youtube_search_results: List[Any] | str = YoutubeSearch(
-            youtube_query, max_results=5
-        ).to_dict()
+        youtube_search_result: YoutubeResult | None = bot_utils.search_youtube(
+            youtube_query
+        )
 
-        typed_results: List[YoutubeResult] = []
-
-        if isinstance(youtube_search_results, str):
-            await ctx.send(f"Search failed or returned error: {youtube_search_results}")
+        if youtube_search_result is None:
+            logger.error(f"No video result obtained, returning.")
+            await ctx.send(f"Could not find anything related to: {youtube_query}")
             return
+
+        message: str = (
+            "Matched result for query: "
+            + youtube_search_result["title"]
+            + " downloading song..."
+        )
+        await ctx.send(message)
+
+        if "list" in youtube_search_result["url_suffix"]:
+            youtube_search_result["url_suffix"] = youtube_search_result[
+                "url_suffix"
+            ].split("&")[0]
+
+        connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx, bot)
+
+        if connected_to_channel:
+            # Reproduce Music
+            await bot_utils.reproduce_song(
+                ctx=ctx,
+                video_url=youtube_search_result["url_suffix"],
+                bot=bot,
+                play_list=play_list,
+            )
         else:
-            typed_results = [YoutubeResult(entry) for entry in youtube_search_results]
-
-        if len(typed_results) > 1:
-            youtube_result: YoutubeResult = typed_results[0]
-
-            message: str = (
-                "Matched result for query: "
-                + youtube_result["title"]
-                + " downloading song..."
-            )
-            await ctx.send(message)
-            
-            if 'list' in youtube_result["url_suffix"]:
-                youtube_result["url_suffix"] = youtube_result["url_suffix"].split('&')[0]
-
-            audio_name: str = bot_utils.download_youtube_song(
-                youtube_result["url_suffix"], youtube_result["title"]
-            )
-
-            connected_to_channel: bool = await bot_utils.connect_to_voice_channel(
-                ctx, bot
-            )
-
-            if connected_to_channel:
-                # Reproduce Music
-                await bot_utils.reproduce_song(
-                    ctx=ctx, audio_name=audio_name, bot=bot, play_list=play_list
-                )
-            else:
-                await ctx.send("User is not in a channel, failed to join...")
+            await ctx.send("User is not in a channel, failed to join...")
     except AttributeError as e:
         logger.error(e)
         return
@@ -199,5 +181,6 @@ async def leave(ctx: Context):
         return
 
     await voice_client.disconnect()
+
 
 bot.run(BOT_TOKEN)
