@@ -1,9 +1,6 @@
-from math import log
 import platform
-from pydoc import plain
 from typing import Any, List, Literal
 from yt_dlp import YoutubeDL
-from platform import system
 from pata_logger import Logger
 from playlist import PlayList
 from os.path import exists

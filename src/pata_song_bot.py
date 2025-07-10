@@ -1,4 +1,3 @@
-from tkinter import NO
 from typing import Any, List, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
