@@ -19,8 +19,7 @@ BOT_TOKEN: str | None = getenv("BOT_TOKEN")
 if BOT_TOKEN is None:
     raise RuntimeError("Could not obtain token from environment settings.")
 
-intents: Intents = Intents.default()
-intents.message_content = True
+intents: Intents = Intents.all()
 bot = Bot(command_prefix="$", intents=intents)
 play_list = PlayList()
 logger = Logger("pata_song_bot")
