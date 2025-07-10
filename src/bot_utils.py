@@ -183,7 +183,7 @@ async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
         voice_client: VoiceClient = await connected.channel.connect()
 
         if not voice_client.is_connected:
-            logger.error("Could not connectto channel")
+            logger.error("Could not connect to channel")
             return False
 
         logger.debug(f"Connected to channel {voice_client.channel.id}")
