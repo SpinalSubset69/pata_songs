@@ -2,8 +2,6 @@ import logging
 from typing import TextIO
 
 def Logger(name: str) -> logging.Logger:
-    logging.basicConfig(level=logging.DEBUG)
-
     console_handler: logging.StreamHandler[TextIO] = logging.StreamHandler();
     file_handler: logging.FileHandler = logging.FileHandler(
         filename="./logs/logs.txt",
@@ -21,5 +19,6 @@ def Logger(name: str) -> logging.Logger:
     logger: logging.Logger = logging.getLogger(name)
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
+    logger.setLevel(logging.DEBUG)
 
     return logger
