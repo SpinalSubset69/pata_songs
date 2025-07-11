@@ -58,9 +58,10 @@ async def reproduce_playlist(ctx: Context):
 @bot.command()
 async def add_playlist(
     ctx: Context,
+    *,
     args: str = commands.parameter(default="", description="Song to query"),
 ):
-    youtube_query: str = bot_utils.get_command_args_split(args)
+    youtube_query: str = args
 
     if youtube_query == "":
         await ctx.send("Please provided at least 1 argument")
@@ -89,10 +90,11 @@ async def add_playlist(
 @bot.command()
 async def play(
     ctx: Context,
+    *,
     args: str = commands.parameter(default="", description="Song to query"),
 ):
     try:
-        youtube_query: str = bot_utils.get_command_args_split(args)
+        youtube_query: str = args
 
         if youtube_query == "":
             await ctx.send("Please provided at least 1 argument")

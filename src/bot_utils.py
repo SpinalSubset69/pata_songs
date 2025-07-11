@@ -1,6 +1,6 @@
 from asyncio import Event
 import platform
-from typing import Any, List, Literal, Optional
+from typing import Any, Optional
 from warnings import deprecated
 from yt_dlp import YoutubeDL
 from pata_logger import Logger
@@ -134,34 +134,6 @@ def download_youtube_song(videoUrl: str, song_title: str) -> str:
     logger.debug(f"Download complete... {filename}")
 
     return filename
-
-
-def get_command_args_split(args) -> str:
-    first_split: Any = args.split(" ")  # To avoide extra args
-
-    split_args: List[Any] = []
-    song_name: Literal[""] = ""
-
-    if "|" in first_split[0]:
-        split_args = first_split[0].split("|")
-        song_name = split_args[0]
-    else:
-        song_name = first_split[0]
-
-    song_author: Literal[""] = ""
-
-    if len(split_args) > 0:
-        song_author = split_args[1]
-
-    if song_name is None and song_author == "":
-        return ""
-
-    youtube_query: Any | Literal[""] = song_name
-
-    if song_author != "":
-        youtube_query += " " + song_author
-
-    return youtube_query
 
 
 async def reproduce_song(
