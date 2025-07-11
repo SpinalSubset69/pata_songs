@@ -1,5 +1,7 @@
+from asyncio import Event
 import platform
-from typing import Any, List, Literal
+from typing import Any, List, Literal, Optional
+from warnings import deprecated
 from yt_dlp import YoutubeDL
 from pata_logger import Logger
 from playlist import PlayList
@@ -8,18 +10,103 @@ from discord.utils import get
 from discord import (
     Guild,
     Member,
+    PCMVolumeTransformer,
+    StageChannel,
+    VoiceChannel,
     VoiceClient,
     FFmpegPCMAudio,
     VoiceProtocol,
-    VoiceState,
 )
-from asyncio import sleep
 from discord.ext.commands import Bot, Context
+from youtube_result import YoutubeResult
 
 
 logger = Logger("bot_utils")
 
+YOUTUBE_DLP_OPTIONS = {
+    "format": "bestaudio[ext=m4a]/bestaudio/best",
+    "extract_flat": "in_playlist",  # We need this for speed
+    "match_filter": "original_url !*= /shorts/",  # This is for removing shorts, but it seems to be broken
+    "default_search": "ytsearch",
+    "source_address": "0.0.0.0",  # Bind the client request to random IP
+    "nocheckcertificate": True,
+    "ignoreerrors": True,
+    "logtostderr": True,
+    "no_warnings": True,
+    "break_on_existing": True,
+    "skip_download": True,
+    "quiet": True,
+    "getcomments": False,
+    "keepvideo": False,
+}
 
+
+def search_youtube(search_query: str, results: int = 5) -> Optional[YoutubeResult]:
+    """obtains list of results from YouTube with best settings"""
+    try:
+        logger.debug(f"Searching for: {search_query}")
+
+        result = YoutubeDL(YOUTUBE_DLP_OPTIONS).extract_info(
+            f'ytsearch{results}:"{search_query}"', download=False
+        )
+
+        logger.debug(f"Results obtained from query: {result}")
+
+        if not result or "entries" not in result or not result["entries"]:
+            logger.error(f"No search results found for query: {search_query}")
+            return None
+
+        for entry in result["entries"]:
+            if entry and "/shorts/" not in entry["url"]:
+                logger.debug(f"Selected entry: {entry}")
+                return YoutubeResult(title=entry["title"], url_suffix=entry["url"])
+
+        logger.warning("All top results were Shorts. No valid result found.")
+        return None
+    except Exception as exception:
+        logger.error(f"Error trying to search: {exception}.")
+        return None
+
+
+def get_youtube_stream_url(video_url: str) -> Optional[str]:
+    """Tries to obtain a stream url from a YouTube url"""
+    logger.debug(f"Extracting streamable url from: {video_url}")
+
+    with YoutubeDL(YOUTUBE_DLP_OPTIONS) as ydl:
+        try:
+            info_dict = ydl.extract_info(video_url, download=False)
+
+            if info_dict is None or "formats" not in info_dict:
+                logger.error(f"Could not extract formats from: {video_url}")
+                return None
+
+            logger.debug(
+                f"Evaluating formats for audio: found {len(info_dict['formats'])} formats"
+            )
+
+            audio_formats = [
+                f
+                for f in info_dict["formats"]
+                if f.get("vcodec") == "none" and f.get("acodec") != "none"
+            ]
+
+            if not audio_formats:
+                logger.error("No suitable audio-only format found.")
+                return None
+
+            best_audio = max(audio_formats, key=lambda f: f.get("abr") or 0)
+            logger.debug(f"Selected best audio format: {best_audio.get('format_id')}")
+
+            logger.debug(f"best audio url: {best_audio["url"]}")
+
+            return best_audio["url"]
+
+        except Exception as e:
+            logger.error(f"Failed to get stream URL: {e}")
+            return None
+
+
+@deprecated(f"Please use get_youtube_stream_url to convert to audio_source")
 def download_youtube_song(videoUrl: str, song_title: str) -> str:
     filename: str = f"{song_title}.mp3"
 
@@ -74,13 +161,18 @@ def get_command_args_split(args) -> str:
     if song_author != "":
         youtube_query += " " + song_author
 
-    return youtube_query + " music video, no playlists"
+    return youtube_query
 
 
 async def reproduce_song(
-    ctx: Context, audio_name: str, bot: Bot, play_list: PlayList
+    ctx: Context, video_url: str, bot: Bot, play_list: PlayList
 ) -> None:
     try:
+        if video_url is None:
+            logger.error("Could not obtain audio source")
+            await ctx.send(f"Could not obtain audio source.")
+            return
+
         if ctx.guild is None:
             logger.error("Could not obtain guild")
             return
@@ -96,19 +188,35 @@ async def reproduce_song(
             logger.error("Could not obtain instance of VoiceClient")
             return
 
-        audio_source: FFmpegPCMAudio | None = get_audio_source(audio_name)
-
-        if audio_source is None:
-            logger.error("Could not obtain audio source")
-            return
-
         if not voice_client.is_playing():
-            voice_client.play(audio_source, after=None)
-            await ctx.send("Reproducing " + audio_name)
 
-            # TODO: Why are we checking if it's playing after already checking that it's not?
-            while voice_client.is_playing():
-                await sleep(1)
+            stream_url: str | None = get_youtube_stream_url(video_url)
+
+            if stream_url is None:
+                logger.error("Failed to retrieve stream URL.")
+                await ctx.send("Failed to retrieve stream URL.")
+                return
+
+            logger.debug(f"Converting url {stream_url} to audio source")
+
+            audio_source = create_audio_source_from_url(stream_url)
+
+            if audio_source is None:
+                logger.error("Could not obtain audio source")
+                await ctx.send("Could not obtain audio source")
+                return
+
+            finished_event: Event = Event()
+
+            def after_playback(error: Exception | None):
+                if error:
+                    logger.error(f"Playback error: {error}")
+
+                finished_event.set()
+
+            voice_client.play(audio_source, after=after_playback)
+            await ctx.send("Reproducing " + video_url)
+            await finished_event.wait()
 
             if play_list.get_playlist_lenght(
                 guild_id
@@ -117,11 +225,9 @@ async def reproduce_song(
             ) <= play_list.get_playlist_lenght(
                 guild_id
             ):
-                # TODO: Check why we pass new_audio_source but the method reproduce_song accepts only name so it's not needed
                 actual_audio_name: Any = play_list.get_next_song(guild_id)
-                new_audio_source: FFmpegPCMAudio | None = get_audio_source(actual_audio_name)
 
-                if new_audio_source is None:
+                if actual_audio_name is None:
                     logger.error("Could not obtain audio source")
                     return
 
@@ -130,18 +236,19 @@ async def reproduce_song(
                 play_list.reset_play_list(guild_id)
                 await voice_client.disconnect()
         else:
-            play_list.add_to_playlist(guild_id, audio_name)
-            await ctx.send("Added to playlist:  " + audio_name)
+            play_list.add_to_playlist(guild_id, video_url)
+            await ctx.send("Added to playlist:  " + video_url)
 
     except Exception as e:
         logger.error(e)
 
 
+@deprecated("Please use create_audio_source_from_url instead")
 def get_audio_source(audio_name: str) -> FFmpegPCMAudio | None:
     if not exists("./songs/" + audio_name):
         logger.error(f"Could not find {audio_name}")
         return None
-    
+
     is_windows: bool = platform.system() == "Windows"
     ffmpeg: str = "./ffmpeg/bin/ffmpeg.exe" if is_windows else "ffmpeg"
 
@@ -151,7 +258,27 @@ def get_audio_source(audio_name: str) -> FFmpegPCMAudio | None:
 
     return FFmpegPCMAudio(executable=ffmpeg, source="./songs/" + audio_name)
 
-async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
+
+def create_audio_source_from_url(stream_url: str) -> Optional[PCMVolumeTransformer]:
+    is_windows: bool = platform.system() == "Windows"
+    ffmpeg_path = "./ffmpeg/bin/ffmpeg.exe" if is_windows else "ffmpeg"
+
+    if is_windows and not exists("./ffmpeg/bin/"):
+        logger.error(f"Could not find ffmpeg")
+        return
+
+    return PCMVolumeTransformer(
+        FFmpegPCMAudio(
+            stream_url,
+            executable=ffmpeg_path,
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            options="-vn",
+        ),
+        volume=1.0,
+    )
+
+
+async def connect_to_voice_channel(ctx: Context) -> bool:
     if ctx.guild is None:
         logger.error("Could not obtain guild")
         return False
@@ -162,28 +289,32 @@ async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
 
     author: Member = ctx.author
 
-    if not isinstance(author.voice, VoiceState):
-        logger.error("Could not obtain voice")
-        return False
-    
-    connected: VoiceState | None = ctx.author.voice
-
-    if not isinstance(connected, VoiceState):
-        logger.error("Could not obtain a valid VoiceState")    
+    if author.voice is None or author.voice.channel is None:
+        logger.error("Author is not in a voice channel")
         return False
 
-    if connected:
-        if connected.channel is None:
-            logger.error("Could not obtain channel")
-            return False
+    voice_channel: VoiceChannel | StageChannel = author.voice.channel
 
-        voice_client: VoiceClient = await connected.channel.connect()
+    voice_client: VoiceClient | VoiceProtocol | None = ctx.guild.voice_client
 
-        if not voice_client.is_connected:
-            logger.error("Could not connect to channel")
-            return False
+    if (
+        voice_client is not None
+        and isinstance(voice_client, VoiceClient)
+        and voice_client.is_connected()
+    ):
+        logger.debug(f"Bot already connected to channel {voice_client.channel.id}")
 
-        logger.debug(f"Connected to channel {voice_client.channel.id}")
+        if voice_client.channel != voice_channel:
+            logger.info("Bot is connected to a different channel. Moving...")
+            await voice_client.move_to(voice_channel)
+
         return True
-    else:
+
+    try:
+        voice_client = await voice_channel.connect()
+        logger.debug(f"Connected to channel {voice_client.channel.id}")
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to connect to voice channel: {e}")
         return False
