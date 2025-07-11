@@ -152,7 +152,7 @@ async def play(
     -------
     User input: !add_playlist never going to give you up
 
-    The full string "viva la vida coldplay" will be passed as the `args` parameter and used to
+    The full string "never going to give you up" will be passed as the `args` parameter and used to
     search YouTube. The resulting video will be added to the server's playlist.
     """
     try:
