@@ -61,6 +61,37 @@ async def add_playlist(
     *,
     args: str = commands.parameter(default="", description="Song to query"),
 ):
+    """
+    Adds a song to the server's playlist by searching YouTube using the provided query.
+
+    Parameters
+    ----------
+    ctx : Context
+        The context in which the command was invoked, including metadata such as the channel and guild.
+    args : str, keyword-only
+        The search query for the song to add. Declared after a `*` to make it keyword-only.
+        This allows the entire remaining message (including spaces) to be captured as a single string.
+
+    Behavior
+    --------
+    - Validates that a query was provided.
+    - Searches YouTube using the query.
+    - If a result is found, extracts the video URL suffix.
+    - Adds the song to the playlist associated with the current server (`guild.id`).
+    - Sends a confirmation message to the Discord text channel.
+
+    Notes
+    -----
+    The use of `*` in the function signature is used to support multi-word queries.
+    Without it, Discord.py would split the message by spaces and treat each word as a separate argument.
+
+    Example
+    -------
+    User input: !add_playlist never going to give you up
+
+    The full string "never going to give you up" will be passed as the `args` parameter and used to
+    search YouTube. The resulting video will be added to the server's playlist.
+    """
     youtube_query: str = args
 
     if youtube_query == "":
@@ -93,6 +124,37 @@ async def play(
     *,
     args: str = commands.parameter(default="", description="Song to query"),
 ):
+    """
+    Adds a song to the server's playlist by searching YouTube using the provided query.
+
+    Parameters
+    ----------
+    ctx : Context
+        The context in which the command was invoked, including metadata such as the channel and guild.
+    args : str, keyword-only
+        The search query for the song to add. Declared after a `*` to make it keyword-only.
+        This allows the entire remaining message (including spaces) to be captured as a single string.
+
+    Behavior
+    --------
+    - Validates that a query was provided.
+    - Searches YouTube using the query.
+    - If a result is found, extracts the video URL suffix.
+    - Adds the song to the playlist associated with the current server (`guild.id`).
+    - Sends a confirmation message to the Discord text channel.
+
+    Notes
+    -----
+    The use of `*` in the function signature is used to support multi-word queries.
+    Without it, Discord.py would split the message by spaces and treat each word as a separate argument.
+
+    Example
+    -------
+    User input: !add_playlist never going to give you up
+
+    The full string "viva la vida coldplay" will be passed as the `args` parameter and used to
+    search YouTube. The resulting video will be added to the server's playlist.
+    """
     try:
         youtube_query: str = args
 
