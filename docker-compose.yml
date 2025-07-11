@@ -1,0 +1,18 @@
+name: Picadas_De_Culo
+services:
+  patasongs.bot:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - LOG_LEVEL=DEBUG
+    env_file:
+      - path: .env
+        required: true # default
+    networks:
+      - Picadas_De_Culo.Network
+
+networks:
+  Picadas_De_Culo.Network:
+    name: Picadas_De_Culo.Network
