@@ -7,7 +7,8 @@ from discord.ext.commands import Bot, Context
 from youtube_search import YoutubeSearch
 from dotenv import load_dotenv
 from discord.utils import get
-from discord import Guild, Intents, VoiceProtocol, VoiceClient
+from discord import Guild, Intents, VoiceProtocol, VoiceClient, Embed, Color
+from embed_builder import EmbedBuilder
 from os import getenv
 import bot_utils
 
@@ -190,5 +191,48 @@ async def leave(ctx: Context):
         raise RuntimeError("Could not obtain instance of VoiceClient")
 
     await voice_client.disconnect()
+
+@bot.command()
+async def pause(ctx: Context):
+    if ctx.guild is None:
+         raise RuntimeError("Could not obtain guild")
+    guild : Guild = ctx.guild
+
+    voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+
+    if not isinstance(voice_client, VoiceClient):            
+        embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not connected in a voice channel, can\'t pause").set_color(Color.red()).build()
+        await ctx.send(embed=embed)
+        return
+
+    if voice_client.is_paused():
+        return
+
+    if not voice_client.is_playing():
+        embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not playing any song, can\'t pause").set_color(Color.red()).build()
+        await ctx.send(embed=embed)            
+        return    
+    
+    voice_client.pause()
+
+@bot.command()
+async def resume(ctx: Context):
+    if ctx.guild is None:
+         raise RuntimeError("Could not obtain guild")
+    guild : Guild = ctx.guild
+
+    voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+
+    if not isinstance(voice_client, VoiceClient):    
+        embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is not in a channel, can\'t resume any song").set_color(Color.red()).build()        
+        await ctx.send(embed= embed)
+        return
+
+    if voice_client.is_playing():
+        embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is not playing any song, can\'t resume").set_color(Color.red()).build()
+        await ctx.send(embed=embed)            
+        return    
+    
+    voice_client.resume()
 
 bot.run(BOT_TOKEN)

@@ -7,8 +7,10 @@ from playlist import PlayList
 from os.path import exists
 from discord.utils import get
 from discord import (
+    Embed,
     Guild,
     Member,
+    VoiceChannel,
     VoiceClient,
     FFmpegPCMAudio,
     VoiceProtocol,
@@ -107,11 +109,8 @@ async def reproduce_song(
                 guild_id
             ) <= play_list.get_playlist_lenght(
                 guild_id
-            ):
-                # TODO: Check why we pass new_audio_source but the method reproduce_song accepts only name so it's not needed
-                actual_audio_name: Any = play_list.get_next_song(guild_id)
-                new_audio_source: FFmpegPCMAudio = get_audio_source(actual_audio_name)
-
+            ):                
+                actual_audio_name: Any = play_list.get_next_song(guild_id)                
                 await reproduce_song(ctx, actual_audio_name, bot, play_list)
             else:
                 play_list.reset_play_list(guild_id)
@@ -155,8 +154,16 @@ async def connect_to_voice_channel(ctx: Context, bot: Bot) -> bool:
 
     if connected:
         if connected.channel is None:
-            raise RuntimeError("Could not obtain channel")            
+            raise RuntimeError("Could not obtain channel")  
+
+        voice_client: VoiceChannel | VoiceProtocol | None = get(bot.voice_clients, guild = ctx.guild)
+
+        # If we have an instance of voice client bot is already in a channel
+        if isinstance(voice_client, VoiceClient):                
+            return True        
+        
         await connected.channel.connect()
         return True
     else:
         return False
+    
