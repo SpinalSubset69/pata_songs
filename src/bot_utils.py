@@ -288,5 +288,5 @@ async def connect_to_voice_channel(ctx: Context) -> bool:
 
         return True
     except Exception as e:
-        logger.error(f"Failed to connect to voice channel: {e}")
+        logger.error(f"Failed to connect to voice channel: {e}")        
         return False

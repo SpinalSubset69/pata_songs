@@ -5,10 +5,11 @@ from discord.ext import commands
 from discord.ext.commands import Bot, Context
 from dotenv import load_dotenv
 from discord.utils import get
-from discord import Guild, Intents, VoiceProtocol, VoiceClient
+from discord import Color, Embed, Guild, Intents, VoiceProtocol, VoiceClient
 from os import getenv
 from pata_logger import Logger
 import bot_utils
+from embed_builder import EmbedBuilder
 
 load_dotenv()
 
@@ -202,53 +203,111 @@ async def play(
 
 @bot.command()
 async def next_song(ctx: Context):
-    if ctx.guild is None:
-        logger.error(f"Could not obtain guild")
+    try:
+        if ctx.guild is None:
+            logger.error(f"Could not obtain guild")
+            return
+
+        guild: Guild = ctx.guild
+        guild_id: int = ctx.guild.id
+        voice_client: VoiceClient | VoiceProtocol | None = get(
+            bot.voice_clients, guild=guild
+        )
+
+        if not isinstance(voice_client, VoiceClient):
+            logger.error(f"Could not obtain instance of VoiceClient")
+            return
+
+        new_audio_name: Any | Literal[""] = play_list.get_next_song(guild_id)
+
+        if new_audio_name == "":
+            await ctx.send("No more songs in playlist, going to clear playlist!")
+            play_list.reset_play_list(guild_id)
+            return
+
+        if voice_client.is_playing():
+            voice_client.stop()
+
+        await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
+    except AttributeError as e:
+        logger.error(e)
         return
-
-    guild: Guild = ctx.guild
-    guild_id: int = ctx.guild.id
-    voice_client: VoiceClient | VoiceProtocol | None = get(
-        bot.voice_clients, guild=guild
-    )
-
-    if not isinstance(voice_client, VoiceClient):
-        logger.error(f"Could not obtain instance of VoiceClient")
-        return
-
-    new_audio_name: Any | Literal[""] = play_list.get_next_song(guild_id)
-
-    if new_audio_name == "":
-        await ctx.send("No more songs in playlist, going to clear playlist!")
-        play_list.reset_play_list(guild_id)
-        return
-
-    if voice_client.is_playing():
-        voice_client.stop()
-
-    await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
 
 
 @bot.command()
 async def leave(ctx: Context):
-    if ctx.guild is None:
-        logger.error(f"Could not obtain guild")
+    try:
+        if ctx.guild is None:
+            logger.error(f"Could not obtain guild")
+            return
+
+        guild: Guild = ctx.guild
+        voice_client: VoiceClient | VoiceProtocol | None = get(
+            bot.voice_clients, guild=guild
+        )
+
+        if not isinstance(voice_client, VoiceClient):
+            logger.error(f"Could not obtain instance of VoiceClient")
+            return
+
+        if voice_client.is_playing():
+            logger.debug("Client is playing songs, stopping")
+            voice_client.stop()
+
+        await voice_client.disconnect()
+    except AttributeError as e:
+        logger.error(e)
+        return    
+
+@bot.command()
+async def pause(ctx: Context):
+    try:
+        if ctx.guild is None:
+         raise RuntimeError("Could not obtain guild")
+        guild : Guild = ctx.guild
+
+        voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+
+        if not isinstance(voice_client, VoiceClient):            
+            embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not connected in a voice channel").set_color(Color.red()).build()
+            await ctx.send(embed=embed)
+            return
+
+        if voice_client.is_paused():
+            return
+
+        if not voice_client.is_playing():
+            embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not reproducing, can\'t pause").set_color(Color.red()).build()
+            await ctx.send(embed=embed)            
+            return    
+        
+        voice_client.pause()
+    except AttributeError as e:
+        logger.error(e)
+        return     
+
+@bot.command()
+async def resume(ctx: Context):
+    try:
+        if ctx.guild is None:
+         raise RuntimeError("Could not obtain guild")
+        guild : Guild = ctx.guild
+
+        voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+
+        if not isinstance(voice_client, VoiceClient):    
+            embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is not in a channel, can\'t resume").set_color(Color.red()).build()        
+            await ctx.send(embed= embed)
+            return
+
+        if voice_client.is_playing():
+            embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is already reproducing a song").set_color(Color.red()).build()
+            await ctx.send(embed=embed)            
+            return                    
+        
+        voice_client.resume()
+    except AttributeError as e:
+        logger.error(e)
         return
-
-    guild: Guild = ctx.guild
-    voice_client: VoiceClient | VoiceProtocol | None = get(
-        bot.voice_clients, guild=guild
-    )
-
-    if not isinstance(voice_client, VoiceClient):
-        logger.error(f"Could not obtain instance of VoiceClient")
-        return
-
-    if voice_client.is_playing():
-        logger.debug("Client is playing songs, stopping")
-        voice_client.stop()
-
-    await voice_client.disconnect()
-
 
 bot.run(BOT_TOKEN)
