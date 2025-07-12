@@ -4,3 +4,4 @@ ffmpeg
 .env
 venv/
 *.mp3
+**/*.txt
