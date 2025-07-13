@@ -1,6 +1,6 @@
 # install nodejs
 chmod +x scripts/node.sh
-scripts/node.sh
+sudo scripts/node.sh
 
 # init Bot
-python3 pata_song_bot.py
+sudo python3 pata_song_bot.py
