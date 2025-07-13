@@ -11,4 +11,6 @@ RUN pip install --progress-bar on -r requirements.txt
 COPY /src .
 
 # Install Nodejs since PytubeFIX required it to auto generete PO Token for youtube search within a banned IP
+RUN ["chmod", "+x", "/app/scripts/init_bot.sh"]
+
 ENTRYPOINT /app/scripts/init_bot.sh
