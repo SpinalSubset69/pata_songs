@@ -80,7 +80,12 @@ def get_youtube_stream_url(video_url: str) -> Optional[str]:
     """Tries to obtain a stream url from a YouTube url"""
     logger.debug(f"Extracting streamable url from: {video_url}")
 
-    yt = YouTube(video_url, on_progress_callback=on_progress, client='WEB')
+    proxy_handler = {
+        "http": "socks5://127.0.0.1:1080",
+        'https': 'socks5://127.0.0.1:1080'
+    }
+
+    yt = YouTube(video_url, on_progress_callback=on_progress, client='WEB', proxies=proxy_handler)
 
     yt_st: Stream | None = yt.streams.get_audio_only()
 
