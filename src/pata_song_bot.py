@@ -19,10 +19,15 @@ if BOT_TOKEN is None:
     raise RuntimeError("Could not obtain token from environment settings.")
 
 intents: Intents = Intents.all()
-bot = Bot(command_prefix="!", intents=intents)
+
+BOT_COMMAND_PREFIX :str | None = getenv("BOT_COMMAND_PREFIX")
+
+if BOT_COMMAND_PREFIX is None:
+    raise RuntimeError("Could not obtain bot command prefix from environment settings")
+
+bot = Bot(command_prefix=BOT_COMMAND_PREFIX, intents=intents)
 play_list = PlayList()
 logger = Logger("pata_song_bot")
-
 
 @bot.command()
 async def reproduce_playlist(ctx: Context):
