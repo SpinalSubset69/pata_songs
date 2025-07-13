@@ -10,4 +10,5 @@ RUN pip install --progress-bar on -r requirements.txt
 
 COPY /src .
 
-CMD ["python3", "pata_song_bot.py"]
+# Install Nodejs since PytubeFIX required it to auto generete PO Token for youtube search within a banned IP
+ENTRYPOINT /app/scripts/init_bot.sh

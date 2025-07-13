@@ -80,7 +80,7 @@ def get_youtube_stream_url(video_url: str) -> Optional[str]:
     """Tries to obtain a stream url from a YouTube url"""
     logger.debug(f"Extracting streamable url from: {video_url}")
 
-    yt = YouTube(video_url, on_progress_callback=on_progress)
+    yt = YouTube(video_url, on_progress_callback=on_progress, client='ANDROID_VR')
 
     yt_st: Stream | None = yt.streams.get_audio_only()
 
