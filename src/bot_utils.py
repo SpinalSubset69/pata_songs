@@ -23,6 +23,10 @@ from youtube_result import YoutubeResult
 
 logger = Logger("bot_utils")
 
+custom_headers: dict[str, str] = {
+    "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+}
+
 YOUTUBE_DLP_OPTIONS = {
     "format": "bestaudio[ext=m4a]/bestaudio/best",
     "extract_flat": "in_playlist",  # We need this for speed
@@ -38,6 +42,7 @@ YOUTUBE_DLP_OPTIONS = {
     "quiet": True,
     "getcomments": False,
     "keepvideo": False,
+    "http_headers": custom_headers,
 }
 
 
