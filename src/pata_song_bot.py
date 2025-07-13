@@ -175,14 +175,7 @@ async def play(
         if youtube_search_result is None:
             logger.error(f"No video result obtained, returning.")
             await ctx.send(f"Could not find anything related to: {youtube_query}")
-            return
-
-        message: str = (
-            "Matched result for query: "
-            + youtube_search_result["title"]
-            + " downloading song..."
-        )
-        await ctx.send(message)
+            return        
 
         if "list" in youtube_search_result["url_suffix"]:
             youtube_search_result["url_suffix"] = youtube_search_result[

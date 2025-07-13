@@ -2,6 +2,7 @@ from asyncio import Event
 import platform
 from typing import Any, Optional
 from warnings import deprecated
+from pytubefix.streams import Stream
 from yt_dlp import YoutubeDL
 from pata_logger import Logger
 from playlist import PlayList
@@ -19,6 +20,8 @@ from discord import (
 )
 from discord.ext.commands import Bot, Context
 from youtube_result import YoutubeResult
+from pytubefix import YouTube
+from pytubefix.cli import on_progress
 
 
 logger = Logger("bot_utils")
@@ -77,38 +80,14 @@ def get_youtube_stream_url(video_url: str) -> Optional[str]:
     """Tries to obtain a stream url from a YouTube url"""
     logger.debug(f"Extracting streamable url from: {video_url}")
 
-    with YoutubeDL(YOUTUBE_DLP_OPTIONS) as ydl:
-        try:
-            info_dict = ydl.extract_info(video_url, download=False)
+    yt = YouTube(video_url, on_progress_callback=on_progress)
 
-            if info_dict is None or "formats" not in info_dict:
-                logger.error(f"Could not extract formats from: {video_url}")
-                return None
+    yt_st: Stream | None = yt.streams.get_audio_only()
 
-            logger.debug(
-                f"Evaluating formats for audio: found {len(info_dict['formats'])} formats"
-            )
+    if not isinstance(yt_st, Stream):                
+        raise AttributeError("Unable to get video url stream")
 
-            audio_formats = [
-                f
-                for f in info_dict["formats"]
-                if f.get("vcodec") == "none" and f.get("acodec") != "none"
-            ]
-
-            if not audio_formats:
-                logger.error("No suitable audio-only format found.")
-                return None
-
-            best_audio = max(audio_formats, key=lambda f: f.get("abr") or 0)
-            logger.debug(f"Selected best audio format: {best_audio.get('format_id')}")
-
-            logger.debug(f"best audio url: {best_audio["url"]}")
-
-            return best_audio["url"]
-
-        except Exception as e:
-            logger.error(f"Failed to get stream URL: {e}")
-            return None
+    return yt_st.url     
 
 
 @deprecated(f"Please use get_youtube_stream_url to convert to audio_source")
