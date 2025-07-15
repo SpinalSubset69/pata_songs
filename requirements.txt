@@ -3,7 +3,7 @@ aiohttp==3.12.13
 aiosignal==1.4.0
 attrs==25.3.0
 audioop-lts==0.2.1
-certifi==2025.6.15
+certifi==2025.7.14
 cffi==1.17.1
 charset-normalizer==3.4.2
 discord.py==2.5.2
