@@ -30,5 +30,5 @@ def Logger(name: str) -> logging.Logger:
 
     log_level = logging._nameToLevel.get(LOG_LEVEL.upper(), logging.INFO)
     logger.setLevel(log_level)
-    
+
     return logger

@@ -1,4 +1,6 @@
-from typing import Any, Literal
+from logging import Logger
+from typing import Any, Literal, Optional
+from pata_proxy_utils import load_proxies_async
 from youtube_result import YoutubeResult
 from playlist import PlayList
 from discord.ext import commands
@@ -10,6 +12,7 @@ from os import getenv
 from pata_logger import Logger
 import bot_utils
 from embed_builder import EmbedBuilder
+from asyncio import run
 
 load_dotenv()
 
@@ -20,7 +23,7 @@ if BOT_TOKEN is None:
 
 intents: Intents = Intents.all()
 
-BOT_COMMAND_PREFIX :str | None = getenv("BOT_COMMAND_PREFIX")
+BOT_COMMAND_PREFIX: str | None = getenv("BOT_COMMAND_PREFIX")
 
 if BOT_COMMAND_PREFIX is None:
     raise RuntimeError("Could not obtain bot command prefix from environment settings")
@@ -28,6 +31,13 @@ if BOT_COMMAND_PREFIX is None:
 bot = Bot(command_prefix=BOT_COMMAND_PREFIX, intents=intents)
 play_list = PlayList()
 logger = Logger("pata_song_bot")
+
+PROXY_SOURCE: Optional[str] = getenv("PROXY_SOURCE", "NO_PROXY")
+PROXY_FORMAT: Optional[str] = getenv("PROXY_FORMAT")
+
+logger.info("Trying to load proxies")
+run(load_proxies_async(PROXY_SOURCE, PROXY_FORMAT))
+
 
 @bot.command()
 async def reproduce_playlist(ctx: Context):
@@ -262,19 +272,28 @@ async def leave(ctx: Context):
         await voice_client.disconnect()
     except AttributeError as e:
         logger.error(e)
-        return    
+        return
+
 
 @bot.command()
 async def pause(ctx: Context):
     try:
         if ctx.guild is None:
-         raise RuntimeError("Could not obtain guild")
-        guild : Guild = ctx.guild
+            raise RuntimeError("Could not obtain guild")
+        guild: Guild = ctx.guild
 
-        voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+        voice_client: VoiceClient | VoiceProtocol | None = get(
+            bot.voice_clients, guild=guild
+        )
 
-        if not isinstance(voice_client, VoiceClient):            
-            embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not connected in a voice channel").set_color(Color.red()).build()
+        if not isinstance(voice_client, VoiceClient):
+            embed: Embed = (
+                EmbedBuilder()
+                .set_title("Pause Song")
+                .set_description("Bot is not connected in a voice channel")
+                .set_color(Color.red())
+                .build()
+            )
             await ctx.send(embed=embed)
             return
 
@@ -282,37 +301,59 @@ async def pause(ctx: Context):
             return
 
         if not voice_client.is_playing():
-            embed:Embed= EmbedBuilder().set_title("Pause Song").set_description("Bot is not reproducing, can\'t pause").set_color(Color.red()).build()
-            await ctx.send(embed=embed)            
-            return    
-        
+            embed: Embed = (
+                EmbedBuilder()
+                .set_title("Pause Song")
+                .set_description("Bot is not reproducing, can't pause")
+                .set_color(Color.red())
+                .build()
+            )
+            await ctx.send(embed=embed)
+            return
+
         voice_client.pause()
     except AttributeError as e:
         logger.error(e)
-        return     
+        return
+
 
 @bot.command()
 async def resume(ctx: Context):
     try:
         if ctx.guild is None:
-         raise RuntimeError("Could not obtain guild")
-        guild : Guild = ctx.guild
+            raise RuntimeError("Could not obtain guild")
+        guild: Guild = ctx.guild
 
-        voice_client: VoiceClient | VoiceProtocol | None = get(bot.voice_clients, guild = guild)
+        voice_client: VoiceClient | VoiceProtocol | None = get(
+            bot.voice_clients, guild=guild
+        )
 
-        if not isinstance(voice_client, VoiceClient):    
-            embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is not in a channel, can\'t resume").set_color(Color.red()).build()        
-            await ctx.send(embed= embed)
+        if not isinstance(voice_client, VoiceClient):
+            embed: Embed = (
+                EmbedBuilder()
+                .set_title("Resume Song")
+                .set_description("Bot is not in a channel, can't resume")
+                .set_color(Color.red())
+                .build()
+            )
+            await ctx.send(embed=embed)
             return
 
         if voice_client.is_playing():
-            embed:Embed= EmbedBuilder().set_title("Resume Song").set_description("Bot is already reproducing a song").set_color(Color.red()).build()
-            await ctx.send(embed=embed)            
-            return                    
-        
+            embed: Embed = (
+                EmbedBuilder()
+                .set_title("Resume Song")
+                .set_description("Bot is already reproducing a song")
+                .set_color(Color.red())
+                .build()
+            )
+            await ctx.send(embed=embed)
+            return
+
         voice_client.resume()
     except AttributeError as e:
         logger.error(e)
         return
+
 
 bot.run(BOT_TOKEN)

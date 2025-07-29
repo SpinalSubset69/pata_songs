@@ -5,3 +5,6 @@ ffmpeg
 venv/
 *.mp3
 logs
+
+proxylist/*
+!proxylist/.gitkeep
