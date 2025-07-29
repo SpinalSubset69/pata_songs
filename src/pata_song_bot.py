@@ -1,6 +1,5 @@
 from logging import Logger
-from typing import Any, Literal, Optional
-from pata_proxy_utils import load_proxies_async
+from typing import Any, Literal
 from youtube_result import YoutubeResult
 from playlist import PlayList
 from discord.ext import commands
@@ -10,9 +9,8 @@ from discord.utils import get
 from discord import Color, Embed, Guild, Intents, VoiceProtocol, VoiceClient
 from os import getenv
 from pata_logger import Logger
-import bot_utils
+from pata_bot_core import search_youtube, reproduce_song, connect_to_voice_channel
 from embed_builder import EmbedBuilder
-from asyncio import run
 
 load_dotenv()
 
@@ -31,12 +29,6 @@ if BOT_COMMAND_PREFIX is None:
 bot = Bot(command_prefix=BOT_COMMAND_PREFIX, intents=intents)
 play_list = PlayList()
 logger = Logger("pata_song_bot")
-
-PROXY_SOURCE: Optional[str] = getenv("PROXY_SOURCE", "NO_PROXY")
-PROXY_FORMAT: Optional[str] = getenv("PROXY_FORMAT")
-
-logger.info("Trying to load proxies")
-run(load_proxies_async(PROXY_SOURCE, PROXY_FORMAT))
 
 
 @bot.command()
@@ -58,13 +50,13 @@ async def reproduce_playlist(ctx: Context):
         play_list.reset_play_list(guild_id)
         return
 
-    connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx)
+    connected_to_channel: bool = await connect_to_voice_channel(ctx)
     if connected_to_channel:
         # connect bot to channel
         await ctx.send("Bot connected to channel!")
 
         # Reproduce Music
-        await bot_utils.reproduce_song(
+        await reproduce_song(
             ctx=ctx, video_url=audio_name, bot=bot, play_list=play_list
         )
     else:
@@ -114,9 +106,7 @@ async def add_playlist(
         await ctx.send("Please provided at least 1 argument")
         return
 
-    youtube_search_result: YoutubeResult | None = bot_utils.search_youtube(
-        youtube_query
-    )
+    youtube_search_result: YoutubeResult | None = search_youtube(youtube_query)
 
     if youtube_search_result is None:
         logger.error(f"No video result obtained, returning.")
@@ -178,9 +168,7 @@ async def play(
             await ctx.send("Please provided at least 1 argument")
             return
 
-        youtube_search_result: YoutubeResult | None = bot_utils.search_youtube(
-            youtube_query
-        )
+        youtube_search_result: YoutubeResult | None = search_youtube(youtube_query)
 
         if youtube_search_result is None:
             logger.error(f"No video result obtained, returning.")
@@ -199,11 +187,10 @@ async def play(
                 "url_suffix"
             ].split("&")[0]
 
-        connected_to_channel: bool = await bot_utils.connect_to_voice_channel(ctx)
+        connected_to_channel: bool = await connect_to_voice_channel(ctx)
 
         if connected_to_channel:
-            # Reproduce Music
-            await bot_utils.reproduce_song(
+            await reproduce_song(
                 ctx=ctx,
                 video_url=youtube_search_result["url_suffix"],
                 bot=bot,
@@ -243,7 +230,7 @@ async def next_song(ctx: Context):
         if voice_client.is_playing():
             voice_client.stop()
 
-        await bot_utils.reproduce_song(ctx, new_audio_name, bot, play_list)
+        await reproduce_song(ctx, new_audio_name, bot, play_list)
     except AttributeError as e:
         logger.error(e)
         return

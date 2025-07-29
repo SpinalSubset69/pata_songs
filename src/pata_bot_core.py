@@ -1,9 +1,11 @@
-from asyncio import Event
+from asyncio import Event, run
+from os import getenv
 import platform
-from typing import Any, Optional
+from typing import Any, List, Optional
 from warnings import deprecated
 from yt_dlp import YoutubeDL
 from pata_logger import Logger
+from pata_proxy_utils import load_proxies_async
 from playlist import PlayList
 from os.path import exists
 from discord.utils import get
@@ -18,10 +20,16 @@ from discord import (
     VoiceProtocol,
 )
 from discord.ext.commands import Bot, Context
+from proxy_selector import ProxySelector
 from youtube_result import YoutubeResult
 
-
 logger = Logger("bot_utils")
+
+PROXY_SOURCE: Optional[str] = getenv("PROXY_SOURCE", "NO_PROXY")
+PROXY_FORMAT: Optional[str] = getenv("PROXY_FORMAT")
+
+logger.info("Trying to load proxies")
+PROXY_SELECTOR: ProxySelector = run(load_proxies_async(PROXY_SOURCE, PROXY_FORMAT))
 
 custom_headers: dict[str, str] = {
     "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
@@ -50,6 +58,14 @@ def search_youtube(search_query: str, results: int = 5) -> Optional[YoutubeResul
     """obtains list of results from YouTube with best settings"""
     try:
         logger.debug(f"Searching for: {search_query}")
+
+        if PROXY_SELECTOR.has_proxies:
+            proxy_ip: str | None = PROXY_SELECTOR.random_proxy_ip()
+            if proxy_ip:
+                logger.info(f"Routing request from proxy: {proxy_ip}")
+                YOUTUBE_DLP_OPTIONS["proxy"] = proxy_ip
+            else:
+                logger.warning("ProxySelector has no available proxies.")
 
         result = YoutubeDL(YOUTUBE_DLP_OPTIONS).extract_info(
             f'ytsearch{results}:"{search_query}"', download=False
@@ -89,7 +105,7 @@ def get_youtube_stream_url(video_url: str) -> Optional[str]:
                 f"Evaluating formats for audio: found {len(info_dict['formats'])} formats"
             )
 
-            audio_formats = [
+            audio_formats: List[Any] = [
                 f
                 for f in info_dict["formats"]
                 if f.get("vcodec") == "none" and f.get("acodec") != "none"
@@ -99,7 +115,7 @@ def get_youtube_stream_url(video_url: str) -> Optional[str]:
                 logger.error("No suitable audio-only format found.")
                 return None
 
-            best_audio = max(audio_formats, key=lambda f: f.get("abr") or 0)
+            best_audio: Any = max(audio_formats, key=lambda f: f.get("abr") or 0)
             logger.debug(f"Selected best audio format: {best_audio.get('format_id')}")
 
             logger.debug(f"best audio url: {best_audio["url"]}")
@@ -293,5 +309,5 @@ async def connect_to_voice_channel(ctx: Context) -> bool:
 
         return True
     except Exception as e:
-        logger.error(f"Failed to connect to voice channel: {e}")        
+        logger.error(f"Failed to connect to voice channel: {e}")
         return False

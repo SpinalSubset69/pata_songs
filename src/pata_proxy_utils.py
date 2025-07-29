@@ -9,6 +9,7 @@ from tenacity import (
 from pata_proxy import PROXYLISTS, PataProxy, ProxyFormat, ProxyKey, ProxySource
 from proxy_format_parser import ProxyFormatParser, get_format_parser
 from pata_logger import Logger
+from proxy_selector import ProxySelector
 
 
 logger = Logger("proxy_utils")
@@ -20,13 +21,13 @@ logger = Logger("proxy_utils")
     retry=retry_if_exception_type((ClientError, ServerTimeoutError)),
     reraise=True,
 )
-async def load_proxies_async(source: str | None, format: str | None) -> List[PataProxy]:
+async def load_proxies_async(source: str | None, format: str | None) -> ProxySelector:
     parsed_source: ProxySource = ProxySource.from_string(source)
     parsed_format: ProxyFormat = ProxyFormat.from_string(format)
 
     if parsed_source is ProxySource.NO_PROXY:
         logger.info("No proxies selected")
-        return []
+        return ProxySelector([])
 
     proxy_key = ProxyKey(source=parsed_source, format=parsed_format)
     proxy_url: str | None = PROXYLISTS.get(proxy_key)
@@ -35,8 +36,7 @@ async def load_proxies_async(source: str | None, format: str | None) -> List[Pat
         logger.error(
             "No URL found for source=%s, format=%s", parsed_source, parsed_format
         )
-
-        return []
+        return ProxySelector([])
 
     logger.info(
         "Obtained URL %s for source=%s, format=%s",
@@ -58,7 +58,7 @@ async def load_proxies_async(source: str | None, format: str | None) -> List[Pat
             logger.error("Could not parse proxies from file.")
             return []
 
-        return parsed_proxies
+        return ProxySelector(parsed_proxies)
 
     async with ClientSession() as session:
         async with session.get(proxy_url) as response:
@@ -68,7 +68,7 @@ async def load_proxies_async(source: str | None, format: str | None) -> List[Pat
 
             if data is None:
                 logger.error("Could not obtain any data from source %s", proxy_url)
-                return []
+                return ProxySelector([])
 
             logger.info("Obtained data, attempting to parse.")
 
@@ -88,4 +88,4 @@ async def load_proxies_async(source: str | None, format: str | None) -> List[Pat
             proxy_parser.add_range(parsed_proxies)
             proxy_parser.save()
 
-            return parsed_proxies
+            return ProxySelector(parsed_proxies)
