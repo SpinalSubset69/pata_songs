@@ -6,7 +6,7 @@ audioop-lts==0.2.1
 certifi==2025.8.3
 cffi==1.17.1
 charset-normalizer==3.4.3
-discord.py==2.5.2
+discord.py==2.6.0
 dotenv==0.9.9
 frozenlist==1.7.0
 idna==3.10
