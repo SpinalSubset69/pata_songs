@@ -12,7 +12,7 @@ frozenlist==1.7.0
 idna==3.10
 multidict==6.6.4
 propcache==0.3.2
-pycparser==2.22
+pycparser==2.23
 PyNaCl==1.5.0
 python-dotenv==1.1.1
 requests==2.32.5
