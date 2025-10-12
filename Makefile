@@ -35,3 +35,10 @@ run:
 freeze:
 	$(ACTIVATE_CMD)
 	$(PYTHON) -m pip freeze -l > requirements.txt
+
+test:
+ifeq ($(OS), Windows_NT)
+	set PYTHONPATH=src && $(PYTHON) -m pytest -v
+else
+	PYTHONPATH=src $(PYTHON) -m pytest -v
+endif
