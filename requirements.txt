@@ -10,8 +10,9 @@ discord.py==2.6.3
 dotenv==0.9.9
 frozenlist==1.7.0
 idna==3.10
+propcache==0.4.0
+=======
 multidict==6.7.0
-propcache==0.3.2
 pycparser==2.23
 PyNaCl==1.6.0
 python-dotenv==1.1.1
