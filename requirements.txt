@@ -8,7 +8,7 @@ cffi==2.0.0
 charset-normalizer==3.4.3
 discord.py==2.6.3
 dotenv==0.9.9
-frozenlist==1.7.0
+frozenlist==1.8.0
 idna==3.10
 propcache==0.4.0
 multidict==6.7.0
