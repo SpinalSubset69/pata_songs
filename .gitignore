@@ -2,6 +2,7 @@ __pycache__
 bots_env
 ffmpeg
 .env
+.env-lavalink
 venv/
 *.mp3
 logs

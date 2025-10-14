@@ -1,17 +1,38 @@
 name: Picadas_De_Culo
+
 services:
-  patasongs.bot:
+  # patasongs.bot:
+  #   restart: unless-stopped
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - LOG_LEVEL=DEBUG
+  #   env_file:
+  #     - path: .env
+  #       required: true # default
+  #   networks:
+  #     - Picadas_De_Culo.Network
+  
+  patasongs.lavalink.node:
+    image: ghcr.io/lavalink-devs/lavalink:4-alpine
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: Dockerfile
     environment:
-      - LOG_LEVEL=DEBUG
+      - _JAVA_OPTIONS=-Xmx6G
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_NODE_PASSWORD}
     env_file:
-      - path: .env
+      - path: .env-lavalink
         required: true # default
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+      - ./plugins/:/opt/Lavalink/plugins/
     networks:
       - Picadas_De_Culo.Network
+    expose:
+      - 2333
+    ports:
+      - "127.0.0.1:2333:2333"
 
 networks:
   Picadas_De_Culo.Network:
