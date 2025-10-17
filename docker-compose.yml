@@ -20,7 +20,7 @@ services:
     environment:
       - _JAVA_OPTIONS=-Xmx6G
       - SERVER_PORT=2333
-      - LAVALINK_SERVER_PASSWORD=${LAVALINK_NODE_PASSWORD}
+      - LAVALINK_SERVER_PASSWORD=*3Eta62@3SUxNdvhCURR8$NHf8!3q!Nv
     env_file:
       - path: .env-lavalink
         required: true # default

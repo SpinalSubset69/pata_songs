@@ -1,11 +1,18 @@
-from asyncio import Event
-from typing import List, Literal
-from discord import Optional
+from typing import List, Literal, Self
+from discord import (
+    Member,
+    Optional,
+    StageChannel,
+    VoiceChannel,
+    VoiceClient,
+    VoiceState,
+)
 from discord.ext.commands import Bot, Context
 from mafic import Node, NodePool, Player, Playlist
 from mafic.track import Track
 from audio_backend import AudioBackend
 from audio_track import AudioTrack
+from lavalink_node_settings import NodeSettings
 from pata_logger import Logger
 from playlist import PlayList
 
@@ -35,29 +42,28 @@ class LavalinkBackend(AudioBackend):
     node_pool: NodePool
     is_ready: bool = False
 
-    async def __init__(self, node_settings: NodeSettings) -> None:
+    def __init__(self, bot: Bot, node_settings: NodeSettings) -> None:
         super().__init__()
         self.is_ready = False
-        self.node_pool = NodePool(self)  # type: ignore
+        self.bot: Bot = bot
+        self.node_settings: NodeSettings = node_settings
+        self.node_pool = NodePool(bot)
 
-        on_ready_event = Event()
+    @classmethod
+    async def create(cls, bot: Bot, node_settings: NodeSettings) -> "LavalinkBackend":
+        """Async factory for LavalinkBackend (replaces async __init__)."""
+        self: Self = cls(bot, node_settings)
 
-        async def after_ready_async(self, node_settings: NodeSettings):
-            if self.is_ready:
-                return
+        await self.node_pool.create_node(
+            host=node_settings.host,
+            port=node_settings.port,
+            label=node_settings.label,
+            password=node_settings.password,
+        )
 
-            await self.node_pool.create_node(
-                host=node_settings.host,
-                port=node_settings.port,
-                label=node_settings.label,
-                password=node_settings.password,
-            )
-
-            self.is_ready = True
-
-            on_ready_event.set()
-
-        await after_ready_async(self, node_settings)
+        self.is_ready = True
+        logger.info("Lavalink node is ready.")
+        return self
 
     @property
     def current_node(self) -> Node:
@@ -129,22 +135,66 @@ class LavalinkBackend(AudioBackend):
             logger.error("Could not obtain guild")
             return
 
-        guild_id: int = ctx.guild.id
+        if not isinstance(ctx.author, Member):
+            raise RuntimeError("Author is not a guild member.")
 
+        voice_state: VoiceState | None = ctx.author.voice
+        if voice_state is None or voice_state.channel is None:
+            raise RuntimeError("You must be connected to a voice channel first.")
+
+        guild_id: int = ctx.guild.id
         playlist.add_to_playlist(guild_id, audio_item)
 
-        player: Player = self.current_node.get_player(
-            guild_id
-        ) or await self.current_node.add_player(guild_id)
+        player: Player | None = self.current_node.get_player(guild_id)
 
-        if ctx.author.voice and ctx.author.voice.channel:
-            await player.connect(ctx.author.voice.channel.id)
+        if not player:
+            voice: VoiceChannel | StageChannel = voice_state.channel
+            player = await voice.connect(cls=Player)
 
-        # If nothing is playing, start playing the next track
-        if not player.is_playing():
+        if (
+            player is None
+            or not isinstance(player, VoiceClient)
+            or not player.is_playing()
+        ):
+            logger.debug("Nothing is currently playing, adding to queue.")
             await self.play_next(ctx, bot, playlist)
         else:
-            await ctx.send(f"Added to playlist: **{track.title}**")
+            logger.debug("Something is currently playing, adding to queue.")
+            await ctx.send(f"Added to playlist: {audio_item.title}.")
 
     async def play_next(self, ctx: Context, bot: Bot, playlist: PlayList) -> None:
-        return await super().play_next(ctx, bot, playlist)
+        if ctx.guild is None:
+            logger.error("Could not obtain guild")
+            return
+
+        if not isinstance(ctx.author, Member):
+            raise RuntimeError("Author is not a guild member.")
+
+        voice_state: VoiceState | None = ctx.author.voice
+        if voice_state is None or voice_state.channel is None:
+            raise RuntimeError("You must be connected to a voice channel first.")
+
+        guild_id: int = ctx.guild.id
+
+        player: Player | None = self.current_node.get_player(guild_id)
+
+        if not player:
+            voice: VoiceChannel | StageChannel = voice_state.channel
+            player = await voice.connect(cls=Player)
+
+        if player is None or not isinstance(player, VoiceClient):
+            raise RuntimeError("Player is not of voice client instance.")
+
+        next_track: AudioTrack | None = playlist.get_next_song(guild_id)
+        if next_track is None:
+            playlist.reset_play_list(guild_id)
+            player = self.current_node.get_player(guild_id)
+
+            if player:
+                await player.disconnect()
+
+            await ctx.send("Playlist ended.")
+            return
+
+        await player.play(next_track.url)
+        await ctx.send(f"Reproducing {next_track.title}.")

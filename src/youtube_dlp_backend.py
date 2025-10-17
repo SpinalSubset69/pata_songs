@@ -225,6 +225,7 @@ class YoutubeDlpBackend(AudioBackend):
                     logger.error(f"Could not extract info from: {video_url}")
                     return None
 
+                logger.debug(f"Info: {info_dict}")
                 formats: list[dict[str, Any]] | None = info_dict.get("formats")
                 logger.debug(f"formats: {formats}")
 

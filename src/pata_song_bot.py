@@ -1,3 +1,4 @@
+from asyncio import run
 from typing import Any, Dict, Literal
 from audio_backend import AudioBackend
 from audio_track import AudioTrack
@@ -31,24 +32,23 @@ if BOT_COMMAND_PREFIX is None:
     raise RuntimeError("Could not obtain bot command prefix from environment settings")
 
 bot = Bot(command_prefix=BOT_COMMAND_PREFIX, intents=intents)
+backend: AudioBackend = YoutubeDlpBackend()
 play_list = PlayList()
 logger = Logger("pata_song_bot")
 
-backend: AudioBackend
 
-if AUDIO_BACKEND_SOURCE == "youtube-dlp":
-    backend = YoutubeDlpBackend()
-elif AUDIO_BACKEND_SOURCE == "lavalink":
-    node_settings = NodeSettings(
-        getenv("LAVALINK_NODE_HOST", "localhost"),
-        int(getenv("LAVALINK_NODE_PORT", "2333")),
-        getenv("LAVALINK_NODE_LABEL", "Default"),
-        getenv("LAVALINK_NODE_PASSWORD", "password"),
-    )
-
-    backend = LavalinkBackend(node_settings)
-else:
-    raise ValueError(f"Unsupported audio backend source: {AUDIO_BACKEND_SOURCE}.")
+@bot.event
+async def on_ready():
+    if AUDIO_BACKEND_SOURCE == "lavalink":
+        logger.debug("The audio backend was set to Lavalink, setting up.")
+        node_settings = NodeSettings(
+            getenv("LAVALINK_NODE_HOST", "localhost"),
+            int(getenv("LAVALINK_NODE_PORT", "2333")),
+            getenv("LAVALINK_NODE_LABEL", "Default"),
+            getenv("LAVALINK_NODE_PASSWORD", "password"),
+        )
+        logger.debug("Lavalink node settings: %s.", node_settings)
+        return await LavalinkBackend.create(bot, node_settings)
 
 
 @bot.command()
